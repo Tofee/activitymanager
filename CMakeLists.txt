@@ -1,6 +1,4 @@
-# @@@LICENSE
-#
-# Copyright (c) 2009-2013 LG Electronics, Inc.
+# Copyright (c) 2009-2018 LG Electronics, Inc.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -14,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 #
-# LICENSE@@@
+# SPDX-License-Identifier: Apache-2.0
 
 cmake_minimum_required(VERSION 2.8.7)
 
@@ -24,66 +22,23 @@ include(webOS/webOS)
 webos_modules_init(1 0 0 QUALIFIER RC2)
 webos_component(3 0 0)
 
-include(FindPkgConfig)
-pkg_check_modules(GLIB2 REQUIRED glib-2.0)
-include_directories(${GLIB2_INCLUDE_DIRS})
-webos_add_compiler_flags(ALL ${GLIB2_CFLAGS_OTHER})
-
-pkg_check_modules(OPENSSL REQUIRED openssl)
-include_directories(${OPENSSL_INCLUDE_DIRS})
-webos_add_compiler_flags(ALL ${OPENSSL_CFLAGS_OTHER})
-
-pkg_check_modules(LS2 REQUIRED luna-service2)
-include_directories(${LS2_INCLUDE_DIRS})
-webos_add_compiler_flags(ALL ${LS2_CFLAGS_OTHER})
-
-find_package(Boost REQUIRED COMPONENTS regex)
-include_directories(${Boost_INCLUDE_DIRS})
-
-pkg_check_modules(DB8 REQUIRED db8>=3)
-include_directories(${DB8_INCLUDE_DIRS})
-webos_add_compiler_flags(ALL ${DB8_CFLAGS_OTHER})
-
-pkg_check_modules(PMLOG REQUIRED PmLogLib>=3)
-include_directories(${PMLOG_INCLUDE_DIRS})
-webos_add_compiler_flags(ALL ${PMLOG_CFLAGS_OTHER})
-
-#-- check for NYX
-pkg_check_modules(NYXLIB REQUIRED nyx)
-include_directories(${NYXLIB_INCLUDE_DIRS})
-webos_add_compiler_flags(ALL ${NYXLIB_CFLAGS_OTHER})
-# There is a call to system("initctl ...") in ServiceApp.cpp which is compiled in for
-# all implementations except WEBOS_TARGET_MACHINE_IMPL_SIMULATOR
 webos_machine_impl_dep()
 
-include_directories(include/internal)
-webos_add_compiler_flags(ALL -Wall -Wno-error=strict-aliasing -Wconversion -DMOJ_LINUX -DBOOST_SP_DISABLE_THREADS -DUSE_PMLOG)
-webos_add_compiler_flags(DEBUG -DMOJ_DEBUG)
-
-# MojoDb generates warnings in core/MojObject.h, so no -Werror
-#webos_add_compiler_flags(ALL -Werror )
-
-webos_add_linker_options (ALL "--no-undefined")
-#Uncomment following line to see Trace logs
-#add_definitions(-DPMLOG_TRACES_ENABLED -DPMLOG_TRACE_COMPONENT="ActivityManager")
-
-file(GLOB SOURCE_FILES src/*.cpp)
-
-add_executable(activitymanager ${SOURCE_FILES})
-target_link_libraries(activitymanager
-                      ${DB8_LDFLAGS}
-                      ${Boost_LIBRARIES}
-                      ${GLIB2_LDFLAGS}
-                      ${OPENSSL_LDFLAGS}
-                      ${LS2_LDFLAGS}
-                      ${PMLOG_LDFLAGS}
-                      ${NYXLIB_LDFLAGS}
-                     )
-
-webos_build_daemon()
 webos_build_system_bus_files()
 webos_build_db8_files()
 
 if (WEBOS_CONFIG_BUILD_TESTS)
-  webos_add_compiler_flags(ALL -DUNITTEST)
+    webos_use_gtest()
+    webos_add_compiler_flags(ALL -DUNITTEST)
+    add_subdirectory(unit_test)
 endif()
+
+add_subdirectory(src/common)
+add_subdirectory(src/activitymanager)
+add_subdirectory(src/am-monitor)
+add_subdirectory(src/am-send)
+
+file(GLOB_RECURSE SCHEMAS files/schema/*.schema)
+install(FILES ${SCHEMAS} DESTINATION ${WEBOS_INSTALL_WEBOS_SYSCONFDIR}/schemas/activitymanager)
+file(GLOB_RECURSE CONFIGS files/conf/*)
+install(FILES ${CONFIGS} DESTINATION ${WEBOS_INSTALL_WEBOS_SYSCONFDIR})
